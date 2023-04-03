@@ -19,11 +19,15 @@ function App() {
     }
   };
 
+  const handleShow = (country) => {
+    setCountries([country]);
+  };
+
   const displayResult = () => {
     if (countries.length > 10) {
       return <p>Too many matches, please make your query more specific.</p>;
     } else if (countries.length > 1) {
-      return <CountryList countries={countries} />;
+      return <CountryList countries={countries} onShow={handleShow} />;
     } else if (countries.length === 1) {
       return <CountryDetails country={countries[0]} />;
     } else {
@@ -39,10 +43,13 @@ function App() {
   );
 }
 
-const CountryList = ({ countries }) => (
+const CountryList = ({ countries, onShow }) => (
   <ul>
     {countries.map((country) => (
-      <li key={country.cca3}>{country.name.common}</li>
+      <li key={country.cca3}>
+        {country.name.common}
+        <button onClick={() => onShow(country)}>Show</button>
+      </li>
     ))}
   </ul>
 );
