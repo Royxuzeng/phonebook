@@ -1,181 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import phonebookService from './phonebookService'
+import React, { useState } from 'react';
+import axios from 'axios';
 
-const Persons = ({ persons, handleDelete }) => {
+function App() {
+  const [search, setSearch] = useState('');
+  const [countries, setCountries] = useState([]);
+
+  const fetchCountries = async (query) => {
+    const response = await axios.get(`https://restcountries.com/v3.1/name/${query}`);
+    setCountries(response.data);
+  };
+
+  const handleChange = (e) => {
+    setSearch(e.target.value);
+    if (e.target.value.length > 1) {
+      fetchCountries(e.target.value);
+    } else {
+      setCountries([]);
+    }
+  };
+
+  const displayResult = () => {
+    if (countries.length > 10) {
+      return <p>Too many matches, please make your query more specific.</p>;
+    } else if (countries.length > 1) {
+      return <CountryList countries={countries} />;
+    } else if (countries.length === 1) {
+      return <CountryDetails country={countries[0]} />;
+    } else {
+      return null;
+    }
+  };
+
   return (
+    <div>
+      <input type="text" value={search} onChange={handleChange} />
+      {displayResult()}
+    </div>
+  );
+}
+
+const CountryList = ({ countries }) => (
+  <ul>
+    {countries.map((country) => (
+      <li key={country.cca3}>{country.name.common}</li>
+    ))}
+  </ul>
+);
+
+const CountryDetails = ({ country }) => (
+  <div>
+    <h2>{country.name.common}</h2>
+    <p>Capital: {country.capital}</p>
+    <p>Area: {country.area} km²</p>
+    <img src={country.flags.svg} alt={`Flag of ${country.name.common}`} width="200" />
+    <h3>Languages:</h3>
     <ul>
-      {persons.map(person => (
-        <li key={person.id}>
-          {person.name} {person.number}
-          <button onClick={() => handleDelete(person.id)}>delete</button>
-        </li>
+      {Object.values(country.languages).map((language, index) => (
+        <li key={index}>{language}</li>
       ))}
     </ul>
-  )
-}
+  </div>
+);
 
-
-
-const PersonForm = ({ onSubmit, nameValue, onNameChange, numberValue, onNumberChange }) => {
-  return (
-    <form onSubmit={onSubmit}>
-      <div>
-        name: <input value={nameValue} onChange={onNameChange} />
-      </div>
-      <div>
-        number: <input value={numberValue} onChange={onNumberChange} />
-      </div>
-      <div>
-        <button type="submit">add</button>
-      </div>
-    </form>
-  )
-}
-
-const Filter = ({ value, onChange }) => {
-  return (
-    <div>
-      filter shown with <input value={value} onChange={onChange} />
-    </div>
-  )
-}
-
-const Notification = ({ message, type }) => {
-  if (message === null) {
-    return null
-  }
-
-  const baseStyle = {
-    color: 'green',
-    background: 'lightgrey',
-    fontSize: '20px',
-    borderStyle: 'solid',
-    borderRadius: '5px',
-    padding: '10px',
-    marginBottom: '10px',
-  }
-
-  const successStyle = {
-    ...baseStyle,
-    color: 'green',
-  }
-
-  const errorStyle = {
-    ...baseStyle,
-    color: 'red',
-  }
-
-  return (
-    <div style={type === 'error' ? errorStyle : successStyle}>
-      {message}
-    </div>
-  )
-}
-
-
-const App = () => {
-  const [persons, setPersons] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [search, setSearch] = useState('')
-  const [notificationMessage, setNotificationMessage] = useState({ message: null, type: null })
-
-  useEffect(() => {
-    phonebookService
-      .getAll()
-      .then(initialPersons => {
-        setPersons(initialPersons)
-      })
-  }, [])
-
-  const showNotification = (message, type) => {
-    setNotificationMessage({ message, type })
-    setTimeout(() => {
-      setNotificationMessage({ message: null, type: null })
-    }, 5000)
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    const existingPerson = persons.find(person => person.name === newName)
-
-    if (existingPerson) {
-      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
-        const updatedPerson = { ...existingPerson, number: newNumber }
-        phonebookService
-          .update(existingPerson.id, updatedPerson)
-          .then(returnedPerson => {
-            setPersons(persons.map(person => person.id !== existingPerson.id ? person : returnedPerson))
-            setNewName('')
-            setNewNumber('')
-            showNotification(`Updated ${returnedPerson.name}'s number`, 'success')
-          })
-          .catch(error => {
-            showNotification(`Information of ${existingPerson.name} has already been removed from the server`, 'error')
-            setPersons(persons.filter(person => person.id !== existingPerson.id))
-          })
-      }
-    } else {
-      const newPerson = {
-        name: newName,
-        number: newNumber
-      }
-
-      phonebookService
-        .create(newPerson)
-        .then(returnedPerson => {
-          setPersons(persons.concat(returnedPerson))
-          setNewName('')
-          setNewNumber('')
-          showNotification(`Added ${returnedPerson.name}`, 'success')
-        })
-    }
-  }
-
-  const handleNameChange = (event) => {
-    setNewName(event.target.value)
-  }
-
-  const handleNumberChange = (event) => {
-    setNewNumber(event.target.value)
-  }
-
-  const handleSearchChange = (event) => {
-    setSearch(event.target.value)
-  }
-
-  const handleDelete = (id) => {
-    const personToDelete = persons.find(person => person.id === id)
-    if (window.confirm(`Delete ${personToDelete.name}?`)) {
-      phonebookService
-        .remove(id)
-        .then(() => {
-          setPersons(persons.filter(person => person.id !== id))
-        })
-    }
-  }
-
-  const filteredPersons = persons.filter(person =>
-    person.name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <div>
-      <h2>Phonebook</h2>
-      <Notification message={notificationMessage.message} type={notificationMessage.type} />
-      <Filter value={search} onChange={handleSearchChange} />
-      <h3>Add a new</h3>
-      <PersonForm
-        onSubmit={handleSubmit}
-        nameValue={newName}
-        onNameChange={handleNameChange}
-        numberValue={newNumber}
-        onNumberChange={handleNumberChange}
-      />
-      <h3>Numbers</h3>
-      <Persons persons={filteredPersons} handleDelete={handleDelete} />
-    </div>
-  )
-}
-
-export default App
+export default App;
