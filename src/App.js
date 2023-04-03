@@ -40,11 +40,45 @@ const Filter = ({ value, onChange }) => {
   )
 }
 
+const Notification = ({ message, type }) => {
+  if (message === null) {
+    return null
+  }
+
+  const baseStyle = {
+    color: 'green',
+    background: 'lightgrey',
+    fontSize: '20px',
+    borderStyle: 'solid',
+    borderRadius: '5px',
+    padding: '10px',
+    marginBottom: '10px',
+  }
+
+  const successStyle = {
+    ...baseStyle,
+    color: 'green',
+  }
+
+  const errorStyle = {
+    ...baseStyle,
+    color: 'red',
+  }
+
+  return (
+    <div style={type === 'error' ? errorStyle : successStyle}>
+      {message}
+    </div>
+  )
+}
+
+
 const App = () => {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [search, setSearch] = useState('')
+  const [notificationMessage, setNotificationMessage] = useState({ message: null, type: null })
 
   useEffect(() => {
     phonebookService
@@ -53,6 +87,13 @@ const App = () => {
         setPersons(initialPersons)
       })
   }, [])
+
+  const showNotification = (message, type) => {
+    setNotificationMessage({ message, type })
+    setTimeout(() => {
+      setNotificationMessage({ message: null, type: null })
+    }, 5000)
+  }
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -67,6 +108,11 @@ const App = () => {
             setPersons(persons.map(person => person.id !== existingPerson.id ? person : returnedPerson))
             setNewName('')
             setNewNumber('')
+            showNotification(`Updated ${returnedPerson.name}'s number`, 'success')
+          })
+          .catch(error => {
+            showNotification(`Information of ${existingPerson.name} has already been removed from the server`, 'error')
+            setPersons(persons.filter(person => person.id !== existingPerson.id))
           })
       }
     } else {
@@ -81,6 +127,7 @@ const App = () => {
           setPersons(persons.concat(returnedPerson))
           setNewName('')
           setNewNumber('')
+          showNotification(`Added ${returnedPerson.name}`, 'success')
         })
     }
   }
@@ -115,6 +162,7 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={notificationMessage.message} type={notificationMessage.type} />
       <Filter value={search} onChange={handleSearchChange} />
       <h3>Add a new</h3>
       <PersonForm
