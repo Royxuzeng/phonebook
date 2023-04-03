@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function App() {
@@ -54,7 +54,23 @@ const CountryList = ({ countries, onShow }) => (
   </ul>
 );
 
-const CountryDetails = ({ country }) => (
+const CountryDetails = ({ country }) => {
+  const [weather, setWeather] = useState(null);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      const response = await axios.get(
+        `http://api.openweathermap.org/data/2.5/weather?q=${country.capital}&units=metric&appid=${process.env.REACT_APP_API_KEY}`
+      );
+      setWeather(response.data);
+    };
+
+    if (country.capital) {
+      fetchWeather();
+    }
+  }, [country.capital]);
+
+  return (
   <div>
     <h2>{country.name.common}</h2>
     <p>Capital: {country.capital}</p>
@@ -66,7 +82,36 @@ const CountryDetails = ({ country }) => (
         <li key={index}>{language}</li>
       ))}
     </ul>
+    <WeatherReport weather={weather} />
   </div>
-);
+  )
+};
+
+
+const WeatherReport = ({ weather }) => {
+  if (!weather) {
+    return null;
+  }
+
+  const { main, description, icon } = weather.weather[0];
+  const temperature = Math.round(weather.main.temp);
+
+  return (
+    <div>
+      <h3>Weather in {weather.name}</h3>
+      <p>
+        <strong>{main}:</strong> {description}
+      </p>
+      <p>
+        <strong>Temperature:</strong> {temperature}°C
+      </p>
+      <img
+        src={`http://openweathermap.org/img/w/${icon}.png`}
+        alt={description}
+        width="50"
+      />
+    </div>
+  );
+};
 
 export default App;
